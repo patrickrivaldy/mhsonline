@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, supabaseUrl, supabaseAnonKey } from './lib/supabase';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function Home() {
   const [mahasiswa, setMahasiswa] = useState([]);
@@ -14,6 +15,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [editingNim, setEditingNim] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [user, setUser] = useState(null);
 
   const handleEditClick = (m) => {
     setEditingNim(m.nim);
@@ -82,6 +84,20 @@ export default function Home() {
 
   useEffect(() => {
     ambilData();
+    
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+    };
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // 2. FUNGSI CREATE & UPDATE: Menambah atau mengubah data beserta proses upload berkas
@@ -170,70 +186,133 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-100 p-8">
+      {/* Navigation Bar */}
+      <div className="max-w-6xl mx-auto mb-8 bg-white shadow-sm border border-gray-150 rounded-2xl px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="flex items-center gap-2">
+          <div className="bg-blue-600 text-white p-2 rounded-xl shadow-md">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222 4 2.222V20" />
+            </svg>
+          </div>
+          <span className="font-bold text-gray-800 tracking-tight">MHS Online</span>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          {user ? (
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-xs text-gray-400 font-medium">Masuk sebagai</p>
+                <p className="text-sm font-semibold text-gray-700 max-w-[150px] truncate">{user.email || user.phone}</p>
+              </div>
+              <Link
+                href="/dashboard"
+                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer"
+              >
+                Dashboard
+              </Link>
+              <button
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  setUser(null);
+                }}
+                className="px-4 py-2.5 border border-gray-200 hover:bg-red-50 hover:text-red-600 text-gray-600 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                Keluar
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer"
+            >
+              Masuk / Daftar
+            </Link>
+          )}
+        </div>
+      </div>
+
       <div className="max-w-6xl mx-auto space-y-8">
         <h1 className="text-3xl font-bold text-gray-800 text-center">
           Sistem Informasi Mahasiswa v2 (Multi-Cloud Assets)
         </h1>
 
         {/* FORM REGISTER */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4 text-gray-700">
-            {editingNim ? `Edit Mahasiswa & Berkas (NIM: ${editingNim})` : 'Tambah Mahasiswa & Berkas'}
-          </h2>
-          <form onSubmit={tambahMahasiswa} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-600">NIM</label>
-                <input
-                  type="text"
-                  value={nim}
-                  onChange={(e) => setNim(e.target.value)}
-                  disabled={Boolean(editingNim)}
-                  className="mt-1 block w-full rounded-md border-gray-300 p-2 bg-gray-50 border text-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
-                  placeholder="e.g. 23001"
-                />
+        {user ? (
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4 text-gray-700">
+              {editingNim ? `Edit Mahasiswa & Berkas (NIM: ${editingNim})` : 'Tambah Mahasiswa & Berkas'}
+            </h2>
+            <form onSubmit={tambahMahasiswa} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">NIM</label>
+                  <input
+                    type="text"
+                    value={nim}
+                    onChange={(e) => setNim(e.target.value)}
+                    disabled={Boolean(editingNim)}
+                    className="mt-1 block w-full rounded-md border-gray-300 p-2 bg-gray-50 border text-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                    placeholder="e.g. 23001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">Nama Lengkap</label>
+                  <input type="text" value={nama} onChange={(e) => setNama(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 p-2 bg-gray-50 border text-gray-800" placeholder="e.g. Budi Santoso" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">Angkatan</label>
+                  <input type="number" value={angkatan} onChange={(e) => setAngkatan(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 p-2 bg-gray-50 border text-gray-800" placeholder="e.g. 2023" />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600">Nama Lengkap</label>
-                <input type="text" value={nama} onChange={(e) => setNama(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 p-2 bg-gray-50 border text-gray-800" placeholder="e.g. Budi Santoso" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600">Angkatan</label>
-                <input type="number" value={angkatan} onChange={(e) => setAngkatan(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 p-2 bg-gray-50 border text-gray-800" placeholder="e.g. 2023" />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-600">Foto Profil (Supabase Storage)</label>
-                <input type="file" accept="image/*" onChange={(e) => setFileFoto(e.target.files[0])} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">Foto Profil (Supabase Storage)</label>
+                  <input type="file" accept="image/*" onChange={(e) => setFileFoto(e.target.files[0])} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600">Link Direct Foto KTP (Google Drive)</label>
+                  <input type="text" value={linkKtp} onChange={(e) => setLinkKtp(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 p-2 bg-gray-50 border text-gray-800" placeholder="https://drive.google.com/uc?export=view&id=..." />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600">Link Direct Foto KTP (Google Drive)</label>
-                <input type="text" value={linkKtp} onChange={(e) => setLinkKtp(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 p-2 bg-gray-50 border text-gray-800" placeholder="https://drive.google.com/uc?export=view&id=..." />
-              </div>
-            </div>
 
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium p-2 rounded-md transition disabled:bg-gray-400 cursor-pointer"
-              >
-                {loading ? 'Sedang Memproses Data...' : editingNim ? 'Simpan Perubahan' : 'Simpan Data Lengkap'}
-              </button>
-              {editingNim && (
+              <div className="flex gap-2">
                 <button
-                  type="button"
-                  onClick={batalEdit}
-                  className="bg-gray-500 hover:bg-gray-600 text-white font-medium p-2 rounded-md transition cursor-pointer"
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium p-2 rounded-md transition disabled:bg-gray-400 cursor-pointer"
                 >
-                  Batal Edit
+                  {loading ? 'Sedang Memproses Data...' : editingNim ? 'Simpan Perubahan' : 'Simpan Data Lengkap'}
                 </button>
-              )}
-            </div>
-          </form>
-        </div>
+                {editingNim && (
+                  <button
+                    type="button"
+                    onClick={batalEdit}
+                    className="bg-gray-500 hover:bg-gray-600 text-white font-medium p-2 rounded-md transition cursor-pointer"
+                  >
+                    Batal Edit
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl text-center shadow-sm max-w-2xl mx-auto">
+            <svg className="w-12 h-12 text-amber-500 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <h3 className="text-lg font-bold text-amber-900 mb-1">Akses Terbatas</h3>
+            <p className="text-sm text-amber-700 mb-4">
+              Silakan masuk ke akun Anda terlebih dahulu untuk menambah, mengubah, atau menghapus data mahasiswa.
+            </p>
+            <Link
+              href="/login"
+              className="inline-block px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer"
+            >
+              Masuk Sekarang
+            </Link>
+          </div>
+        )}
 
         {/* TABEL DATA */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -285,18 +364,22 @@ export default function Home() {
                       >
                         Detail
                       </button>
-                      <button
-                        onClick={() => handleEditClick(m)}
-                        className="text-amber-600 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded transition cursor-pointer font-semibold"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => hapusMahasiswa(m.nim)}
-                        className="text-rose-600 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded transition cursor-pointer font-semibold"
-                      >
-                        Hapus
-                      </button>
+                      {user && (
+                        <>
+                          <button
+                            onClick={() => handleEditClick(m)}
+                            className="text-amber-600 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded transition cursor-pointer font-semibold"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => hapusMahasiswa(m.nim)}
+                            className="text-rose-600 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded transition cursor-pointer font-semibold"
+                          >
+                            Hapus
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))

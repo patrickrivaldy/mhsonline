@@ -233,7 +233,7 @@ export default function Home() {
 
       <div className="max-w-6xl mx-auto space-y-8">
         <h1 className="text-3xl font-bold text-gray-800 text-center">
-          Sistem Informasi Mahasiswa v2 (Multi-Cloud Assets)
+          Sistem Informasi Mahasiswa v3 (Multi-Cloud Assets)
         </h1>
 
         {/* FORM REGISTER */}
